@@ -1,9 +1,7 @@
 streamlit
 pandas
-firebase-admin
-plotly
-qrcode
-Pillow
-fpdf
 numpy
+plotly
 scikit-learn
+fpdf
+openpyxl
