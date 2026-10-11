@@ -209,30 +209,18 @@ st.markdown("""
 
 
 # --- 3. HELPER FUNCTIONS ---
-
 def card(col, title, value, sub_text, status="neutral"):
-
     color_class = f"status-{status}" if status in ["good", "bad", "warning"] else "text-white"
-
-    html = f"""
-
-    <div class="kpi-card">
-
-        <div class="kpi-title">{title}</div>
-
-        <div class="kpi-value">{value}</div>
-
-        <div class="kpi-sub {color_class}">{sub_text}</div>
-
-    </div>
-
-    """
-
+    
+    # HTML string must have NO leading spaces 
+    html = f"""<div class="kpi-card">
+<div class="kpi-title">{title}</div>
+<div class="kpi-value">{value}</div>
+<div class="kpi-sub {color_class}">{sub_text}</div>
+</div>"""
+    
     with col:
-
         st.markdown(html, unsafe_allow_html=True)
-
-
 
 def apply_chart_style(fig):
 
