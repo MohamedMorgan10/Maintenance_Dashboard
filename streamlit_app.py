@@ -1120,77 +1120,37 @@ with tab3:
 
 
 
-        # Gold Medal
-
+       # Gold Medal
         g_name, g_jobs, g_mttr = get_tech_kpi(0)
-
         with col_gold:
-
-            st.markdown(f"""
-
-            <div style="background-color: rgba(255, 215, 0, 0.2); padding: 20px; border-radius: 10px; text-align: center; border: 1px solid gold;">
-
-                <h1 style="margin:0;">🥇</h1>
-
-                <h3 style="color: gold; margin:0;">{g_name}</h3>
-
-                <p style="color: white; font-size: 1.2rem; font-weight: bold;">{g_jobs} Fixes</p>
-
-                <p style="color: #cbd5e1;">MTTR: {g_mttr:.0f}m</p>
-
-            </div>
-
-            """, unsafe_allow_html=True)
-
-
+            st.markdown(f"""<div style="background-color: rgba(255, 215, 0, 0.2); padding: 20px; border-radius: 10px; text-align: center; border: 1px solid gold;">
+<h1 style="margin:0;">🥇</h1>
+<h3 style="color: gold; margin:0;">{g_name}</h3>
+<p style="color: white; font-size: 1.2rem; font-weight: bold;">{g_jobs} Fixes</p>
+<p style="color: #cbd5e1;">MTTR: {g_mttr:.0f}m</p>
+</div>""", unsafe_allow_html=True)
 
         # Silver Medal
-
         s_name, s_jobs, s_mttr = get_tech_kpi(1)
-
         with col_silver:
-
-             st.markdown(f"""
-
-            <div style="background-color: rgba(192, 192, 192, 0.2); padding: 20px; border-radius: 10px; text-align: center; border: 1px solid silver;">
-
-                <h1 style="margin:0;">🥈</h1>
-
-                <h3 style="color: silver; margin:0;">{s_name}</h3>
-
-                <p style="color: white; font-size: 1.2rem; font-weight: bold;">{s_jobs} Fixes</p>
-
-                <p style="color: #cbd5e1;">MTTR: {s_mttr:.0f}m</p>
-
-            </div>
-
-            """, unsafe_allow_html=True)
-
-
+             st.markdown(f"""<div style="background-color: rgba(192, 192, 192, 0.2); padding: 20px; border-radius: 10px; text-align: center; border: 1px solid silver;">
+<h1 style="margin:0;">🥈</h1>
+<h3 style="color: silver; margin:0;">{s_name}</h3>
+<p style="color: white; font-size: 1.2rem; font-weight: bold;">{s_jobs} Fixes</p>
+<p style="color: #cbd5e1;">MTTR: {s_mttr:.0f}m</p>
+</div>""", unsafe_allow_html=True)
 
         # Bronze Medal
-
         b_name, b_jobs, b_mttr = get_tech_kpi(2)
-
         with col_bronze:
-
-             st.markdown(f"""
-
-            <div style="background-color: rgba(205, 127, 50, 0.2); padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #cd7f32;">
-
-                <h1 style="margin:0;">🥉</h1>
-
-                <h3 style="color: #cd7f32; margin:0;">{b_name}</h3>
-
-                <p style="color: white; font-size: 1.2rem; font-weight: bold;">{b_jobs} Fixes</p>
-
-                <p style="color: #cbd5e1;">MTTR: {b_mttr:.0f}m</p>
-
-            </div>
+             st.markdown(f"""<div style="background-color: rgba(205, 127, 50, 0.2); padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #cd7f32;">
+<h1 style="margin:0;">🥉</h1>
+<h3 style="color: #cd7f32; margin:0;">{b_name}</h3>
+<p style="color: white; font-size: 1.2rem; font-weight: bold;">{b_jobs} Fixes</p>
+<p style="color: #cbd5e1;">MTTR: {b_mttr:.0f}m</p>
+</div>""", unsafe_allow_html=True)
 
             """, unsafe_allow_html=True)
-
-
 
         st.markdown("---")
 
