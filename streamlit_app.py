@@ -29,7 +29,7 @@ import io
 # (Moved to the top: Streamlit requires this to be the first Streamlit command)
 st.set_page_config(page_title="Maintenance Command Center 2026", page_icon="⚙️", layout="wide")
 
-st.title("Modern AI Dashboard Mohamed Morgan Apps ")
+st.title("Maintenance AI dashboard")
 
 
 # --- 2. CSS STYLING (Industrial/Dark Theme - WHITE HEADERS & CHARTS) ---
