@@ -1,11 +1,28 @@
+import sys
+import subprocess
+
+# --- AUTO-INSTALLER BLOCK ---
+# This forces Streamlit Cloud to install missing packages before running the app
+try:
+    import plotly.express as px
+    import pandas as pd
+    import numpy as np
+    import sklearn
+    from fpdf import FPDF
+    import openpyxl
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "pandas", "numpy", "plotly", "scikit-learn", "fpdf", "openpyxl"])
+    import plotly.express as px
+    import pandas as pd
+    import numpy as np
+    import sklearn
+    from fpdf import FPDF
+# ----------------------------
+
 import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
 import datetime
-from fpdf import FPDF
 import io
 
 # --- 1. Page Configuration ---
@@ -161,9 +178,7 @@ def load_maintenance_data(file):
         if not df_bd.empty:
             df_bd['Date'] = pd.to_datetime(df_bd['Date'], errors='coerce')
             
-            # --- FIX APPLIED HERE ---
             df_bd['BD Duration Eff'] = pd.to_numeric(df_bd['Effective DT reverted'], errors='coerce').fillna(0)
-            # ------------------------
             
             df_bd['Month_Name'] = df_bd['Date'].dt.month_name()
             df_bd['Week_Start'] = df_bd['Date'] - pd.to_timedelta(df_bd['Date'].dt.dayofweek, unit='d')
@@ -279,7 +294,6 @@ availability = (operating_time / total_avail_mins * 100) if total_avail_mins > 0
 dt_pct = 100 - availability
 
 # --- 7. DASHBOARD LAYOUT ---
-# Updated Tabs to include Fishbone Analysis
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Executive Overview", "🔧 Breakdown Analysis", "👨‍🔧 Tech & Asset Performance", "🤖 AI Insights", "🐟 Fishbone Analysis"])
 
 # =================================================
@@ -340,7 +354,6 @@ with tab1:
         st.plotly_chart(fig3, use_container_width=True)
         
     with c4:
-        # 4. Downtime by Line (Replaced Category Chart)
         line_data = df_bd_filt.groupby('Line')['BD Duration Eff'].sum().reset_index()
         fig4 = px.pie(line_data, values='BD Duration Eff', names='Line', title="4. Total Downtime by Line", hole=0.4, color_discrete_sequence=px.colors.sequential.Plasma_r)
         apply_chart_style(fig4)
@@ -388,7 +401,7 @@ with tab1:
     with c10:
         if 'Tech' in df_bd_filt.columns:
             tech_perf = df_bd_filt.groupby('Tech').agg({'BD Duration Eff':'mean', 'Date':'count'}).reset_index()
-            tech_perf = tech_perf[tech_perf['Date'] > 2] # Filter noise
+            tech_perf = tech_perf[tech_perf['Date'] > 2]
             fig10 = px.bar(tech_perf, x='Tech', y='BD Duration Eff', title="10. Avg MTTR by Technician", color='Date', color_continuous_scale='Bluyl')
             apply_chart_style(fig10)
             st.plotly_chart(fig10, use_container_width=True)
@@ -401,22 +414,17 @@ with tab1:
 with tab2:
     st.markdown("### 🔍 Deep Dive: Root Cause & Frequency Analysis")
     
-    # --- DATA PREP FOR NEW ANALYSIS ---
     df_bd_filt['DayOfWeek'] = df_bd_filt['Date'].dt.day_name()
-    # Ensure correct order
     days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     df_bd_filt['DayOfWeek'] = pd.Categorical(df_bd_filt['DayOfWeek'], categories=days_order, ordered=True)
     
-    # Count occurrences of each day in the selected date range to calculate true averages
     date_counts = pd.DataFrame({'Date': pd.date_range(start=date_range[0], end=date_range[1])})
     date_counts['DayOfWeek'] = date_counts['Date'].dt.day_name()
     day_counts = date_counts['DayOfWeek'].value_counts()
     
-    # Calculate Frequency per Day
     bd_per_day = df_bd_filt['DayOfWeek'].value_counts()
     avg_bd_freq = (bd_per_day / day_counts).reindex(days_order).fillna(0)
     
-    # Weekend Calculation (Fri + Sat)
     weekend_days = ['Friday', 'Saturday']
     total_weekend_bds = bd_per_day[weekend_days].sum()
     total_weekend_occurrences = day_counts[weekend_days].sum()
@@ -427,19 +435,16 @@ with tab2:
     total_weekday_occurrences = day_counts[weekday_days].sum()
     avg_weekday_bds = total_weekday_bds / total_weekday_occurrences if total_weekday_occurrences > 0 else 0
     
-    # Other Metrics
     max_downtime = df_bd_filt['BD Duration Eff'].max()
     short_stops = len(df_bd_filt[df_bd_filt['BD Duration Eff'] < 30])
     short_stop_pct = (short_stops / len(df_bd_filt) * 100) if len(df_bd_filt) > 0 else 0
     
-    # --- ROW 1: KEY FREQUENCY KPIs ---
     b1, b2, b3, b4 = st.columns(4)
     card(b1, "Avg Weekend BDs", f"{avg_weekend_bds:.1f} / Day", "Fri & Sat", "bad" if avg_weekend_bds > avg_weekday_bds else "good")
     card(b2, "Avg Weekday BDs", f"{avg_weekday_bds:.1f} / Day", "Sun - Thu", "neutral")
     card(b3, "Max Single Event", f"{max_downtime:.0f} Min", "Longest Stop", "bad" if max_downtime > 120 else "neutral")
     card(b4, "Short Stops (<30m)", f"{short_stop_pct:.1f}%", "Minor Stoppages", "warning" if short_stop_pct > 50 else "good")
 
-    # --- ROW 2: ADDITIONAL KPIs ---
     b5, b6, b7, b8 = st.columns(4)
     top_bad_actor = df_bd_filt['Machine'].value_counts().idxmax() if not df_bd_filt.empty else "N/A"
     repeat_failures = df_bd_filt['Machine'].value_counts()
@@ -452,19 +457,15 @@ with tab2:
 
     st.markdown("---")
     
-    # --- ROW 3: FREQUENCY CHARTS ---
     bf1, bf2 = st.columns(2)
     with bf1:
-        # Chart 1: Avg BD Frequency by Day of Week (Requested)
         fig_freq = px.bar(x=avg_bd_freq.index, y=avg_bd_freq.values, title="1. Avg Breakdown Frequency by Day", labels={'x':'Day', 'y':'Avg Count'}, color=avg_bd_freq.values, color_continuous_scale='Reds')
         apply_chart_style(fig_freq)
         st.plotly_chart(fig_freq, use_container_width=True)
         
     with bf2:
-        # Chart 2: Breakdown by Hour of Day
         if 'Hour' in df_bd_filt.columns:
             hourly_counts = df_bd_filt.groupby('Hour')['BD Duration Eff'].count().reset_index()
-            # Ensure all hours 0-23 exist
             full_hours = pd.DataFrame({'Hour': range(24)})
             hourly_counts = full_hours.merge(hourly_counts, on='Hour', how='left').fillna(0)
             fig_hour = px.bar(hourly_counts, x='Hour', y='BD Duration Eff', title="2. Shift Analysis: Failures by Hour", labels={'BD Duration Eff':'Count'}, color='BD Duration Eff', color_continuous_scale='Viridis')
@@ -473,10 +474,8 @@ with tab2:
         else:
             st.info("Time data not available for Shift Analysis.")
 
-    # --- ROW 4: SEVERITY & TREND ---
     bf3, bf4 = st.columns(2)
     with bf3:
-        # Chart 3: Top 10 Bad Actors by Duration
         bad_actors_dur = df_bd_filt.groupby('Machine')['BD Duration Eff'].sum().sort_values(ascending=False).head(10).reset_index()
         fig_bad = px.bar(bad_actors_dur, x='BD Duration Eff', y='Machine', orientation='h', title="3. High Severity Assets (Total Duration)", color='BD Duration Eff', color_continuous_scale='Magma')
         fig_bad.update_layout(yaxis=dict(autorange="reversed"))
@@ -484,7 +483,6 @@ with tab2:
         st.plotly_chart(fig_bad, use_container_width=True)
         
     with bf4:
-        # Chart 4: Cumulative Downtime S-Curve
         df_sorted = df_bd_filt.sort_values('Date')
         df_sorted['Cum_Downtime'] = df_sorted['BD Duration Eff'].cumsum()
         fig_cum = px.line(df_sorted, x='Date', y='Cum_Downtime', title="4. Cumulative Downtime (Impact Over Time)", line_shape='hv')
@@ -492,10 +490,8 @@ with tab2:
         apply_chart_style(fig_cum)
         st.plotly_chart(fig_cum, use_container_width=True)
 
-    # --- ROW 5: CAUSE & DISTRIBUTION ---
     bf5, bf6 = st.columns(2)
     with bf5:
-        # Chart 5: Description Keywords (Top 10)
         desc_counts = df_bd_filt['Description'].value_counts().head(10).reset_index()
         desc_counts.columns = ['Issue', 'Count']
         fig_desc = px.bar(desc_counts, x='Count', y='Issue', orientation='h', title="5. Common Failure Descriptions", color='Count', color_continuous_scale='Teal')
@@ -504,7 +500,6 @@ with tab2:
         st.plotly_chart(fig_desc, use_container_width=True)
         
     with bf6:
-        # Chart 6: Duration Distribution Histogram
         fig_hist_bd = px.histogram(df_bd_filt, x='BD Duration Eff', nbins=40, title="6. Failure Severity Distribution", color_discrete_sequence=['#f59e0b'])
         apply_chart_style(fig_hist_bd)
         st.plotly_chart(fig_hist_bd, use_container_width=True)
@@ -516,33 +511,27 @@ with tab3:
     st.markdown("### 👨‍🔧 Technician Performance & Asset Intelligence")
 
     if 'Tech' in df_bd_filt.columns:
-        # --- 1. DATA AGGREGATION ---
-        # Base Calculation
         tech_df = df_bd_filt.groupby('Tech').agg(
             Interventions=('Date', 'count'),
             Total_Downtime=('BD Duration Eff', 'sum'),
             Avg_MTTR=('BD Duration Eff', 'mean'),
-            Unique_Machines=('Machine', 'nunique'),          # New KPI: Versatility
-            Max_Job=('BD Duration Eff', 'max'),                  # New KPI: Hardest Fix
-            Min_Job=('BD Duration Eff', 'min'),                  # New KPI: Speed
+            Unique_Machines=('Machine', 'nunique'),
+            Max_Job=('BD Duration Eff', 'max'),
+            Min_Job=('BD Duration Eff', 'min'),
         ).reset_index()
         
-        # Derived KPIs
         total_plant_jobs = len(df_bd_filt)
-        tech_df['Workload_Share'] = (tech_df['Interventions'] / total_plant_jobs) * 100 # New KPI: Contribution
-        tech_df['Total_Hours'] = tech_df['Total_Downtime'] / 60                          # New KPI: Volume
+        tech_df['Workload_Share'] = (tech_df['Interventions'] / total_plant_jobs) * 100 
+        tech_df['Total_Hours'] = tech_df['Total_Downtime'] / 60                          
         
-        # Calculate Quick Fix % (<30 mins)
         quick_fixes = df_bd_filt[df_bd_filt['BD Duration Eff'] < 30].groupby('Tech')['Date'].count()
         tech_df = tech_df.merge(quick_fixes.rename('Quick_Fixes'), on='Tech', how='left').fillna(0)
-        tech_df['Quick_Fix_Pct'] = (tech_df['Quick_Fixes'] / tech_df['Interventions']) * 100 # New KPI: Efficiency
+        tech_df['Quick_Fix_Pct'] = (tech_df['Quick_Fixes'] / tech_df['Interventions']) * 100 
 
-        # Team Overview Stats
         total_techs = tech_df['Tech'].nunique()
         team_avg_mttr = tech_df['Avg_MTTR'].mean()
         total_interventions = tech_df['Interventions'].sum()
 
-        # Display Team-Level Summary Cards
         t1, t2, t3 = st.columns(3)
         card(t1, "Active Technicians", f"{total_techs}", "Staff on Duty", "neutral")
         card(t2, "Team Avg MTTR", f"{team_avg_mttr:.0f} Min", "Avg Response Speed", "good" if team_avg_mttr < 60 else "warning")
@@ -551,10 +540,8 @@ with tab3:
         st.markdown("---")
         st.subheader("🏆 The Top Performer Leaderboard")
 
-        # Top 3 Calculation (Ranking by Interventions - "Most Active")
         top_techs = tech_df.sort_values(by='Interventions', ascending=False).head(3).reset_index(drop=True)
 
-        # Podium Display
         col_gold, col_silver, col_bronze = st.columns(3)
         
         def get_tech_kpi(idx):
@@ -563,7 +550,6 @@ with tab3:
                 return row['Tech'], row['Interventions'], row['Avg_MTTR']
             return "N/A", 0, 0
 
-        # Gold Medal
         g_name, g_jobs, g_mttr = get_tech_kpi(0)
         with col_gold:
             st.markdown(f"""
@@ -575,7 +561,6 @@ with tab3:
             </div>
             """, unsafe_allow_html=True)
 
-        # Silver Medal
         s_name, s_jobs, s_mttr = get_tech_kpi(1)
         with col_silver:
              st.markdown(f"""
@@ -587,7 +572,6 @@ with tab3:
             </div>
             """, unsafe_allow_html=True)
 
-        # Bronze Medal
         b_name, b_jobs, b_mttr = get_tech_kpi(2)
         with col_bronze:
              st.markdown(f"""
@@ -601,10 +585,8 @@ with tab3:
 
         st.markdown("---")
         
-        # --- NEW SECTION: BEST IN CLASS (6 CARDS) ---
         st.subheader("🏅 Best in Class: Performance Highlights")
         
-        # Calculate the winners for the 6 new categories
         if not tech_df.empty:
             most_hours_tech = tech_df.loc[tech_df['Total_Hours'].idxmax()]
             fastest_tech = tech_df[tech_df['Interventions'] > 2].sort_values('Avg_MTTR').iloc[0] if len(tech_df[tech_df['Interventions'] > 2]) > 0 else tech_df.iloc[0]
@@ -627,12 +609,10 @@ with tab3:
 
         st.markdown("---")
 
-        # --- DETAILED TABLE & ASSETS ---
         col_list, col_chart = st.columns([3, 2])
 
         with col_list:
             st.subheader("📋 Detailed Workforce Analytics")
-            # Format dataframe for display
             display_df = tech_df.sort_values(by='Interventions', ascending=False)
             st.dataframe(
                 display_df,
@@ -653,7 +633,6 @@ with tab3:
 
         with col_chart:
             st.subheader("🚧 Bad Actor Assets")
-            # Existing Asset Code
             asset_kpi = df_bd_filt.groupby(['Line', 'Machine']).agg(
                 Failures=('Date', 'count'),
                 Total_Downtime=('BD Duration Eff', 'sum')
@@ -676,7 +655,6 @@ with tab4:
     daily_dt = df_bd_filt.groupby('Date')['BD Duration Eff'].sum().reset_index()
 
     if len(daily_dt) > 5:
-        # Prepare Data for Regression
         daily_dt['Day_Ordinal'] = pd.to_datetime(daily_dt['Date']).map(datetime.datetime.toordinal)
         X = daily_dt[['Day_Ordinal']]
         y = daily_dt['BD Duration Eff']
@@ -684,12 +662,10 @@ with tab4:
         model = LinearRegression()
         model.fit(X, y)
         
-        # Forecast next 30 days
         future_dates = [daily_dt['Date'].max() + datetime.timedelta(days=i) for i in range(1, 31)]
         future_X = np.array([d.toordinal() for d in future_dates]).reshape(-1, 1)
         future_pred = model.predict(future_X)
         
-        # Trend Slope
         slope = model.coef_[0]
         trend_text = "Increasing" if slope > 0 else "Decreasing"
         trend_color = "bad" if slope > 0 else "good"
@@ -699,7 +675,6 @@ with tab4:
         card(ai2, "Predicted Next Month", f"{sum(future_pred)/60:,.0f} hrs", "Total Forecasted Loss", "neutral")
         card(ai3, "Data Points", f"{len(daily_dt)}", "Days Analyzed", "neutral")
         
-        # Forecast Plot
         fig_ai = go.Figure()
         fig_ai.add_trace(go.Scatter(x=daily_dt['Date'], y=y, mode='markers', name='Actual History', marker=dict(color='#94a3b8')))
         fig_ai.add_trace(go.Scatter(x=daily_dt['Date'], y=model.predict(X), mode='lines', name='Trend Line', line=dict(color='#f59e0b', width=2)))
@@ -709,14 +684,12 @@ with tab4:
         apply_chart_style(fig_ai)
         st.plotly_chart(fig_ai, use_container_width=True)
         
-        # Strategic Advice
         st.info(f"💡 **AI Insight:** The breakdown trend is currently **{trend_text.lower()}**. " +
                 ("Consider reviewing PM schedules for aging assets." if slope > 0 else "Maintenance strategies appear effective."))
         
     else:
         st.warning("Not enough data points for AI prediction (Need at least 5 days of data).")
 
-    # --- REPORT GENERATION ---
     st.markdown("---")
     st.subheader("📄 Export Report")
     
@@ -742,20 +715,16 @@ with tab4:
         pdf.cell(0, 10, "Top 5 Bad Actor Machines:", 0, 1)
         pdf.set_font("Arial", size=11)
         
-        # Add top 5 machines to PDF
         asset_kpi = df_bd_filt.groupby(['Line', 'Machine']).agg(Failures=('Date', 'count'), Total_Downtime=('BD Duration Eff', 'sum')).reset_index().sort_values('Total_Downtime', ascending=False)
         top_machines = asset_kpi.head(5)
         
         for index, row in top_machines.iterrows():
-            # Sanitize the machine name to prevent FPDF crash on non-Latin characters
             safe_machine = str(row['Machine']).encode('latin-1', errors='replace').decode('latin-1')
             pdf.cell(0, 10, f"- {safe_machine}: {row['Total_Downtime']} mins", 0, 1)
             
-        # Safely encode the final PDF byte string
         try:
             pdf_output = pdf.output(dest='S').encode('latin-1', errors='replace')
         except AttributeError:
-            # Fallback if using newer fpdf versions where output() returns bytes directly
             pdf_output = pdf.output()
             
         st.download_button("Download PDF", pdf_output, "Maintenance_Report.pdf", "application/pdf")
@@ -767,7 +736,6 @@ with tab5:
     st.markdown("### 🐟 Root Cause Analysis (Ishikawa Diagram)")
     st.markdown("Enter your root causes below to generate the diagram manually.")
     
-    # --- Input Section (Left) ---
     col_input, col_viz = st.columns([1, 2.5])
     
     with col_input:
@@ -781,29 +749,22 @@ with tab5:
         for cat in categories:
             with st.expander(f"➕ {cat}", expanded=False):
                 val = st.text_area(f"Causes for {cat} (one per line)", height=80, key=f"cat_{cat}")
-                # Clean inputs: split by new line and remove empty strings
                 causes[cat] = [line.strip() for line in val.split('\n') if line.strip()]
 
-    # --- Visualization Section (Right) ---
     with col_viz:
         st.markdown("#### 3. Visual Diagram")
         
         if st.button("Generate Fishbone Diagram", type="primary"):
             
-            # Initialize Figure
             fig = go.Figure()
             
-            # --- 1. Draw Spine ---
             fig.add_trace(go.Scatter(x=[0, 10], y=[0, 0], mode='lines', line=dict(color='white', width=4), hoverinfo='skip'))
             
-            # --- 2. Draw Head (Problem) ---
             fig.add_annotation(
                 x=10, y=0, text=problem, showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=2, ax=10.1, ay=0,
                 bgcolor="#f43f5e", bordercolor="white", borderwidth=2, font=dict(size=14, color="white", weight="bold")
             )
             
-            # --- 3. Define Rib Coordinates ---
-            # Layout Mapping: (Category, x_pos, y_direction)
             layout_map = [
                 ("Measurement", 2, 1),
                 ("Material", 5, 1),
@@ -814,28 +775,22 @@ with tab5:
             ]
             
             for cat, x_pos, y_dir in layout_map:
-                # End point of the rib (angled)
                 y_end = 3.5 * y_dir
                 x_end = x_pos - 1
                 
-                # Draw Rib Line
                 fig.add_trace(go.Scatter(
                     x=[x_pos, x_end], y=[0, y_end],
                     mode='lines', line=dict(color='#94a3b8', width=2), hoverinfo='skip'
                 ))
                 
-                # Add Category Label Box
                 fig.add_annotation(
                     x=x_end, y=y_end, text=cat, showarrow=False,
                     bgcolor="#3b82f6", font=dict(color="white", weight="bold"), bordercolor="white", borderwidth=1, xanchor="center" if y_dir==1 else "center", yanchor="bottom" if y_dir==1 else "top"
                 )
                 
-                # Draw Sub-causes (Twigs)
                 cat_causes = causes.get(cat, [])
                 if cat_causes:
-                    # Distribute causes along the rib
                     num_causes = len(cat_causes)
-                    # Create steps along the rib line for placement
                     x_steps = np.linspace(x_pos, x_end, num_causes + 2)[1:-1]
                     y_steps = np.linspace(0, y_end, num_causes + 2)[1:-1]
                     
@@ -846,19 +801,16 @@ with tab5:
                         twig_len = 1.5
                         tx_end = cx + 0.5
                         
-                        # Draw Twig Line
                         fig.add_trace(go.Scatter(
                             x=[cx, tx_end], y=[cy, cy],
                             mode='lines', line=dict(color='#cbd5e1', width=1), hoverinfo='skip'
                         ))
                         
-                        # Add Cause Text
                         fig.add_annotation(
                             x=tx_end, y=cy, text=cause_text,
                             showarrow=False, xanchor="left", font=dict(color="#e2e8f0", size=10)
                         )
 
-            # --- 4. Chart Styling ---
             fig.update_layout(
                 title=f"Ishikawa Diagram: {problem}",
                 showlegend=False,
